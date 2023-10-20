@@ -1,0 +1,30 @@
+																ab(c((d|e))f)g
+
+ab, c, d, UNION, e
+ab, c, group(group(UNION(d, e))), f
+ab, group(c, group(group(UNION(d, e))), f), g
+
+Pasos:
+expresiones [ empty ]; numero_expresiones [ 0 ] -- input = None
+expresiones [ concat(a, b) ]; numero_expresiones [ 1 ] -- input = "ab"
+
+expresiones [ concat(a, b), empty ]; numero_expresiones [ 2, 0 ] -- input = "("
+expresiones [ concat(a, b), concat(c) ]; numero_expresiones [ 2, 1 ] -- input = "c"
+
+expresiones [ concat(a, b), concat(c), empty ]; numero_expresiones [ 2, 2, 0 ] -- input = "("
+
+expresiones [ concat(a, b), concat(c), empty ]; numero_expresiones [ 2, 2, 1, 0 ] -- input = "("
+
+expresiones [ concat(a, b), concat(c), concat(d) ]; numero_expresiones [ 2, 2, 1, 1 ] -- input = "d"
+expresiones [ concat(a, b), concat(c), concat(d), UNION ]; numero_expresiones [ 2, 2, 1, 1 ] -- input = "|"
+expresiones [ concat(a, b), concat(c), concat(d), UNION, concat(e) ]; numero_expresiones [ 2, 2, 1, 2 ] -- input = "e"
+
+
+expresiones [ concat(a, b), concat(c), grupo(concat(d), UNION, concat(e)) ]; numero_expresiones [ 2, 2, 1 ] -- input = ")"
+expresiones [ concat(a, b), concat(c), grupo(grupo(concat(d), UNION, concat(e))) ]; numero_expresiones [ 2, 2 ] -- input = ")"
+
+expresiones [ concat(a, b), concat(c), grupo(grupo(concat(d), UNION, concat(e))), concat(f) ]; numero_expresiones [ 2, 3 ] -- input = "f"
+expresiones [ concat(a, b), grupo(concat(c), grupo(grupo(concat(d), UNION, concat(e))), concat(f)) ]; numero_expresiones [ 2 ] -- input = ")"
+
+expresiones [ concat(a, b), grupo(concat(c), grupo(grupo(concat(d), UNION, concat(e))), concat(f)), concat(g) ]; numero_expresiones [ 3 ] -- input = "g"
+

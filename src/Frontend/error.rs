@@ -12,6 +12,7 @@ impl ParsingError {
     pub fn new(message: String, error_type: ErrorType, idx: usize) -> Self { 
         ParsingError { message, error_type, idx} 
     }
+    pub fn typ(&self) -> ErrorType {  self.error_type }
 }
 
 impl Display for ParsingError {
@@ -22,11 +23,12 @@ impl Display for ParsingError {
 
 impl Error for ParsingError {}
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ErrorType {
     union,
     range,
     unexpected,
     group,
+    emptyExpression,
 }
 

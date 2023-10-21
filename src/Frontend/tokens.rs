@@ -13,6 +13,8 @@ pub enum Expression {
     concatenation(Vec<Expression>),
     union(Vec<Expression>),
     group(Box<Expression>),
+
+    empty
 }
 
 #[derive(Debug, PartialEq, Eq)]

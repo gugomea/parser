@@ -2,12 +2,6 @@ use std::collections::VecDeque;
 
 use crate::Frontend::{error::*, tokens::*};
 
-#[derive(Debug, PartialEq, Eq)]
-enum ExpressionToken {
-    E(Expression),
-    Union,
-}
-
 pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     let mut it = input.chars().enumerate();
 
@@ -27,12 +21,12 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
                 return Err(ParsingError::new(("Error Construyendo rango").into(), ErrorType::range, idx));
             }
 
-            '|' => expressions.push(ExpressionToken::Union),
+            '|' => expressions.push(None),
 
             quantifier @ ('*' | '+' | '?') => {
                 let new_exp = match expressions.pop() {
-                    Some(ExpressionToken::E(Expression::optional(_))) | Some(ExpressionToken::E(Expression::one_or_more(_))) | Some(ExpressionToken::E(Expression::zero_or_more(_))) => return Err(ParsingError::new("no puedes poner dos cuantificadores seguidos".into(), ErrorType::unexpected, idx)),
-                    Some(ExpressionToken::E(exp)) => match quantifier {
+                    Some(Some(Expression::optional(_))) | Some(Some(Expression::one_or_more(_))) | Some(Some(Expression::zero_or_more(_))) => return Err(ParsingError::new("no puedes poner dos cuantificadores seguidos".into(), ErrorType::unexpected, idx)),
+                    Some(Some(exp)) => match quantifier {
                         '*' => Expression::zero_or_more(Box::new(exp)),
                         '+' => Expression::one_or_more(Box::new(exp)),
                         '?' => Expression::optional(Box::new(exp)),
@@ -41,7 +35,7 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
                     None => return Err(ParsingError::new("Cuantificador sobre expresión vacía".into(), ErrorType::unexpected, idx)),
                     _ => return Err(ParsingError::new("una expresión fue esperada antes".into(), ErrorType::unexpected, idx)),
                 };
-                expressions.push(ExpressionToken::E(new_exp));
+                expressions.push(Some(new_exp));
             }
 
             '(' => {
@@ -54,8 +48,8 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
 
             ')' => {
                 unroll_expressions(&mut expressions, &mut number_of_expressions)?;
-                if let Some(ExpressionToken::E(exp)) = expressions.pop() {
-                    expressions.push(ExpressionToken::E(Expression::group(Box::new(exp))));
+                if let Some(Some(exp)) = expressions.pop() {
+                    expressions.push(Some(Expression::group(Box::new(exp))));
                 }
             }
 
@@ -72,14 +66,14 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
                     Some(n) => *n += 1,
                     None => return Err(ParsingError::new("Unión encontrada en sitio inesperado".into(), ErrorType::union, idx)),
                 }
-                expressions.push(ExpressionToken::E(Expression::l(ch_value)));
+                expressions.push(Some(Expression::l(ch_value)));
             }
         }
     };
 
     match unroll_expressions(&mut expressions, &mut number_of_expressions) {
         Ok(()) => match expressions.pop() {
-            Some(ExpressionToken::E(exp)) => Ok(exp),
+            Some(Some(exp)) => Ok(exp),
             _ => Err(ParsingError::new("Se esperaba al menos, una expresión".into(), ErrorType::unexpected, 0)),
         }
         Err(e) if e.typ() == ErrorType::emptyExpression => Ok(Expression::empty),
@@ -87,33 +81,35 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     }
 }
 
-fn unroll_expressions(expressions: &mut Vec<ExpressionToken>, depth: &mut Vec<usize>) -> Result<(), ParsingError> {
+fn unroll_expressions(expressions: &mut Vec<Option<Expression>>, depth: &mut Vec<usize>) -> Result<(), ParsingError> {
     let mut n = match depth.pop() {
         Some(0) => return Err(ParsingError::new("Expresión vacía".into(), ErrorType::emptyExpression, 0)),
         Some(value) => value,
         None => return Err(ParsingError::new("se esperaba otra expresión".into(), ErrorType::unexpected, 0)),
     };
+
     let mut finale = VecDeque::from(vec![VecDeque::new()]);
     while n != 0 {
         match expressions.pop() {
-            Some(ExpressionToken::E(expr)) => {
+            Some(Some(expr)) => {
                 if let Some(v) = finale.get_mut(0) { v.push_front(expr); }
                 n -= 1;
             }
-            Some(ExpressionToken::Union) => finale.push_front(VecDeque::new()),
+            Some(None) => finale.push_front(VecDeque::new()),
             None => return Err(ParsingError::new("No quedan expresiones".into(), ErrorType::unexpected, 0)),
         }
     }
+
     let mut finale = finale.into_iter().map(|mut x| match x.len() {
         1 => x.pop_front().unwrap(),
         _ => Expression::concatenation(x.into())
     }).collect::<VecDeque<Expression>>();
     if finale.len() == 1 {
-        let exp = ExpressionToken::E(finale.pop_front().unwrap());
+        let exp = Some(finale.pop_front().unwrap());
         expressions.push(exp);
     } else if finale.len() > 1 {
-        let unions = finale.into_iter().collect();
-        expressions.push(ExpressionToken::E(Expression::union(unions)));
+        expressions.push(Some(Expression::union(finale.into())));
     }
+
     Ok(())
 }

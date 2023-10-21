@@ -12,12 +12,17 @@ fn test() {
     println!("input: {}", input);
     println!("{:#?}", ast_regex);
 
-    let input = "a|";
+    let input = "(a|)";
     let ast_regex = stack::parser::parse(input);
     println!("input: {}", input);
     println!("{:#?}", ast_regex);
 
-    let input = "a(";
+    let input = "a(a()))";
+    let ast_regex = stack::parser::parse(input);
+    println!("input: {}", input);
+    println!("{:#?}", ast_regex);
+
+    let input = "a|(b|)";
     let ast_regex = stack::parser::parse(input);
     println!("input: {}", input);
     println!("{:#?}", ast_regex);

@@ -4,7 +4,7 @@ use crate::Frontend::{error::*, tokens::*};
 
 pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     let mut it = input.chars().enumerate();
-
+    
     //The stack where we are going to store the expressions while constructing them,
     //when the process ends, this should only have one expression, the final one.
     let mut expressions = vec![];
@@ -15,13 +15,21 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     //Example => a|b|c|d.   number_of_expressions = vec[4]
     let mut number_of_expressions = vec![0_usize];
 
+    let mut parentesis = 0;
+
     while let Some((idx, current)) = it.next() {
         match current {
             '[' => {
                 return Err(ParsingError::new(("Error Construyendo rango").into(), ErrorType::range, idx));
             }
 
-            '|' => expressions.push(None),
+            '|' => {
+                match number_of_expressions.last() {
+                    Some(0) | None => return Err(ParsingError::new(("Union mal formada").into(), ErrorType::union, idx)),
+                    _ => {}
+                }
+                expressions.push(None);
+            }
 
             quantifier @ ('*' | '+' | '?') => {
                 let new_exp = match expressions.pop() {
@@ -44,6 +52,7 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
                     None => return Err(ParsingError::new("Unión encontrada en sitio inesperado".into(), ErrorType::union, idx)),
                 }
                 number_of_expressions.push(0);
+                parentesis += 1;
             }
 
             ')' => {
@@ -51,6 +60,7 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
                 if let Some(Some(exp)) = expressions.pop() {
                     expressions.push(Some(Expression::group(Box::new(exp))));
                 }
+                parentesis -= 1;
             }
 
             ch => {
@@ -69,7 +79,14 @@ pub fn parse(input: &str) -> Result<Expression, ParsingError> {
                 expressions.push(Some(Expression::l(ch_value)));
             }
         }
+        if parentesis < 0 {
+            return Err(ParsingError::new("Has mas paréntesis cerrados que abiertos".into(), ErrorType::union, idx));
+        }
     };
+
+    if parentesis != 0 {
+        return Err(ParsingError::new("paréntesis mal formados".into(), ErrorType::union, 0));
+    }
 
     match unroll_expressions(&mut expressions, &mut number_of_expressions) {
         Ok(()) => match expressions.pop() {
@@ -98,6 +115,10 @@ fn unroll_expressions(expressions: &mut Vec<Option<Expression>>, depth: &mut Vec
             Some(None) => finale.push_front(VecDeque::new()),
             None => return Err(ParsingError::new("No quedan expresiones".into(), ErrorType::unexpected, 0)),
         }
+    }
+
+    if finale.iter().any(|x| x.is_empty()) {
+        return Err(ParsingError::new("Expresión vacía dentro de la Unión".into(), ErrorType::union, 0));
     }
 
     let mut finale = finale.into_iter().map(|mut x| match x.len() {

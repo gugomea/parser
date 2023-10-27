@@ -8,8 +8,18 @@ pub fn parse_recursivo(input: &str) -> Result<Expression, ParsingError> {
 }
 
 fn parse_rec(it: &mut Enumerate<Chars>) -> Result<Expression, ParsingError> {
-    //Cada componente del vector se corresponde a cada expresión que queda separada por las uniones.
-    //Por ejemplo: abc|(efg) => expresiones = [ Concatenacion(a, b, c), Grupo(Concatenacion(e, f, g)) ]
+
+    //Cada componente del vector es un vector que tiene las expresiones dentro de cada union.
+    //Por ejemplo a|bc => expresiones = [ [atomo(a)], [atomo(b), atomo(c)] ]
+ 
+    //Este vector será procesado cuando o bien se acabe la string, o cuando llegue a un cierre de
+    //paréntesis(es decir, cuando acabe mi expresión). Y el resultado será un Vec<Expression>, para el anterior ejemplo quedaría => 
+    // [ [atomo(a)], [concatenacion(atomo(b), atomo(c))] ].
+
+    // Y por último sería pasado a una union. Expression::union(vector_de_expresiones)
+    // Si el vector de expresiones es de longitud uno, significa que no hay uniones y que es una
+    // sola expresión, así que se devuelve como tal.
+
     let mut expresiones: Vec<Vec<Expression>> = vec![vec![]];
 
     //while(true)
